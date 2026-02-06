@@ -9,11 +9,14 @@ echo " Đang kiểm tra môi trường ảo (venv)..."
 if [ ! -d "venv" ]; then
     echo " [!] Chưa tìm thấy môi trường ảo. Đang tạo venv mới..."
     python3 -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
+fi
+
+source venv/bin/activate
+echo " [!] Đang đồng bộ thư viện..."
+pip install -q -r requirements.txt
+# Chỉ cài playwright nếu chưa có
+if ! command -v playwright &> /dev/null; then
     playwright install chromium
-else
-    source venv/bin/activate
 fi
 
 echo " >>> Đang khởi chạy hệ thống phân tích tin..."
