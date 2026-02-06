@@ -1,37 +1,44 @@
-# Hướng dẫn sử dụng Hệ thống Thao túng Truyền thông (Shark Analyzer)
+# 🦈 Shark Crypto Analyzer 🦈
 
-Hệ thống này giúp bạn tự động lấy tin tức từ các nguồn RSS, lọc các tin bài "tiêu cực" hoặc "tích cực" dựa trên bối cảnh bị cá mập thao túng, cào toàn bộ nội dung và thống kê tần suất các từ khóa nhạy cảm.
+Hệ thống tự động phát hiện **FUD** và dấu hiệu **thao túng thị trường Crypto** từ các nguồn tin tức (RSS) sử dụng sức mạnh của **Gemini 2.5 Flash**.
 
-## 1. Các file cấu hình chính
+## 🚀 Tính năng vượt trội (Version 2026)
 
-- **`config.json`**: Nơi bạn chỉnh sửa chế độ lọc (`positive`/`negative`), ngữ cảnh (`shark_context`) và danh sách các từ khóa tiêu cực cần thống kê.
-- **`rss_links.json`**: Danh sách các link RSS bạn muốn theo dõi.
+- **Gemini 2.5 Flash SDK**: Sử dụng SDK mới nhất (`google-genai`), tốc độ xử lý cực nhanh (Sub-second).
+- **JSON Schema Control**: Đảm bảo đầu ra AI luôn là JSON chuẩn 100%, không lỗi parse.
+- **Crypto Focus**: Quét tin từ VnExpress, VietNamNet và các báo quốc tế lớn (CoinTelegraph, CoinDesk, CryptoSlate).
+- **Automation**: Tự động hóa từ khâu lấy tin -> AI lọc tin FUD -> Bóc tách nội dung chuyên sâu.
+- **Ghi nhật ký ngày**: Tự động lưu file kết quả riêng cho từng ngày chạy.
 
-## 2. Cách vận hành
+## 📁 Cấu trúc dự án
 
-Bạn chỉ cần chạy file tổng hợp:
+- `run.sh`: Script "một chạm" để khởi chạy toàn bộ hệ thống.
+- `config.json`: Nơi chỉnh sửa Model, Bối cảnh (Shark Context) và mục tiêu lọc.
+- `rss_links.json`: Danh sách các nguồn tin RSS (Việt Nam & Quốc tế).
+- `code/`: Thư mục chứa mã nguồn cốt lõi.
+  - `chay_he_thong.py`: Logic vận hành chính.
+  - `utils_gemini.py`: Tương tác với Gemini 2.5 SDK.
+- `ket_qua/`: Thư mục chứa kết quả phân tích JSON.
 
-```bash
-python3 run_all.py
-```
+## 🛠 Hướng dẫn cài đặt & Chạy
 
-## 3. Các bước hệ thống thực hiện:
+1. **Chuẩn bị API Key**: Lấy Google API Key từ [Google AI Studio](https://aistudio.google.com/).
+2. **Kích hoạt & Chạy**:
+   Mở Terminal tại thư mục dự án và chạy:
+   ```bash
+   chmod +x run.sh
+   ./run.sh
+   ```
+   _Script sẽ tự động tạo môi trường ảo (venv), cài đặt thư viện và khởi chạy._
 
-1. **Lấy tin RSS**: Tải tiêu đề và mô tả ngắn từ các link trong `rss_links.json`.
-2. **Lọc nội dung (AI Filter)**: AI sẽ phân tích xem tin nào mang ý đồ "thao túng" theo bối cảnh bạn thiết lập.
-3. **Cào dữ liệu (Scraping)**: Truy cập trực tiếp vào bài báo (vượt qua các trang chỉ load bằng Javascript) để lấy toàn bộ nội dung.
-4. **Phân tích tần suất**: Đếm số lần xuất hiện của các từ khóa như "sụp đổ", "khủng hoảng"... trong bài viết.
+## ⚙️ Tùy chỉnh bối cảnh Cá Mập
 
-## 4. Kết quả nhận được
+Sửa file `config.json`:
 
-Kết quả cuối cùng nằm trong file **`final_results.json`**. Mỗi bài viết sẽ có:
+- `ai_model`: `gemini-2.5-flash` (Mặc định).
+- `shark_context`: Bạn có thể thay đổi cách AI định nghĩa thế nào là "thao túng" hoặc "FUD" tại đây.
+- `limit_days`: Số ngày tin tức cũ nhất muốn quét.
 
-- `title`: Tiêu đề.
-- `shark_intent`: AI phân tích ý đồ phía sau.
-- `full_content`: Toàn bộ nội dung bài báo.
-- `negative_word_frequency`: Bảng thống kê số lần xuất hiện của từ khóa tiêu cực.
+---
 
-## Lưu ý cho người dùng:
-
-- Nếu bạn muốn thay đổi "Bối cảnh cá mập", hãy sửa mục `shark_context` trong `config.json`.
-- Danh sách từ khóa tiêu cực có thể thêm bớt tùy ý trong mục `negative_word_groups`.
+_Phát triển bởi Antigravity AI - 2026_

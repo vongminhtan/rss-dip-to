@@ -91,13 +91,13 @@ async def thuc_thi_he_thong():
     
     print(f"--- Đã lấy được {len(kho_du_lieu_tam)} tin phù hợp với thời gian.")
 
-    # 3. Lọc tin bằng AI thật thông qua Gemini CLI
-    print(f"\n>>> Bước 2: AI (Gemini) đang lọc tin dựa trên bối cảnh 'Cá Mập'...")
+    # 3. Lọc tin bằng AI thật thông qua Gemini SDK
+    print(f"\n>>> Bước 2: AI (Gemini) đang phân tích FUD & Cá mập Crypto...")
     ngu_canh_ai = cau_hinh.get('shark_context', '')
     muc_tieu = cau_hinh.get('target_sentiment', 'negative')
     
-    # Chia nhỏ danh sách tin để gửi (tránh vượt giới hạn token)
-    danh_sach_loc = kho_du_lieu_tam[:20] # Demo 20 tin đầu tiên
+    # Chia nhỏ danh sách tin để gửi (Gemini 2.5 Flash cân được 100+ tin mỗi lần)
+    danh_sach_loc = kho_du_lieu_tam[:100] 
     ket_qua_ai = loc_tin_voi_gemini(danh_sach_loc, ngu_canh_ai, muc_tieu)
     
     tin_da_loc = []
