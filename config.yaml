@@ -1,0 +1,25 @@
+# ==========================================
+# FILE CẤU HÌNH HỆ THỐNG LỌC TIN (2026)
+# ==========================================
+
+# 1. Cấu hình AI lọc tin
+# Chọn 'negative' để lọc tin TIÊU CỰC (FUD) hoặc 'positive' để lọc tin TÍCH CỰC
+target_sentiment: "negative"
+
+# Model AI sử dụng (Khuyên dùng gemini-2.5-flash cho tốc độ)
+ai_model: "gemini-2.5-flash"
+
+# Bối cảnh (Prompt) để AI phân tích. Bạn có thể thay đổi bối cảnh lọc chuyên sâu tại đây.
+shark_context: >
+  BẠN LÀ MÁY LỌC TIN CRYPTO THUẦN TÚY. 
+  Chỉ chấp nhận các tin tức trực tiếp về: Bitcoin, Ethereum, Altcoins, Blockchain, DeFi, NFT, sàn giao dịch tiền số. 
+  LOẠI BỎ TẤT CẢ các tin về: Chứng khoán truyền thống, Giá Vàng, Ngân hàng trung ương, Bất động sản, hoặc Kinh tế vĩ mô chung TRỪ KHI tin đó nói trực tiếp về ảnh hưởng tới Crypto. 
+  Nếu không chắc chắn, hãy loại bỏ. 
+  Mục tiêu hàng đầu là tìm FUD và dấu hiệu thao túng trong thị trường CRYPTO.
+
+# 2. Cấu hình hệ thống
+# Số ngày gần nhất muốn lấy tin (Ví dụ: 1 nghĩa là lấy tin trong vòng 24h qua)
+limit_days: 1
+
+# Nhập Google API Key của bạn (Lấy tại aistudio.google.com)
+google_api_key: "KEY_O_DAY"

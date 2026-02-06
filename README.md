@@ -13,7 +13,7 @@ Hệ thống tự động phát hiện **FUD** và dấu hiệu **thao túng th�
 ## 📁 Cấu trúc dự án
 
 - `run.sh`: Script "một chạm" để khởi chạy toàn bộ hệ thống.
-- `config.json`: Nơi chỉnh sửa Model, Bối cảnh (Shark Context) và mục tiêu lọc.
+- `config.yaml`: Nơi chỉnh sửa Model, Bối cảnh (Shark Context) và mục tiêu lọc.
 - `rss_links.json`: Danh sách các nguồn tin RSS (Việt Nam & Quốc tế).
 - `code/`: Thư mục chứa mã nguồn cốt lõi.
   - `chay_he_thong.py`: Logic vận hành chính.
@@ -33,7 +33,7 @@ Hệ thống tự động phát hiện **FUD** và dấu hiệu **thao túng th�
 
 ## ⚙️ Tùy chỉnh bối cảnh Cá Mập
 
-Sửa file `config.json`:
+Sửa file `config.yaml`:
 
 - `ai_model`: `gemini-2.5-flash` (Mặc định).
 - `shark_context`: Bạn có thể thay đổi cách AI định nghĩa thế nào là "thao túng" hoặc "FUD" tại đây.

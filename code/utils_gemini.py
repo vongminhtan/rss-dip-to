@@ -4,21 +4,23 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel
 
-# Cấu hình API Key trực tiếp
-API_KEY = "AIzaSyD9Q3mHCZP6ZNhO4TANyTDg2-L6rtSx_L4"
-client = genai.Client(api_key=API_KEY)
-
 # Định nghĩa Schema bằng Pydantic
 class TinPhanTich(BaseModel):
     index: int
     phu_hop: bool
     y_do_ca_map: str
 
-def goi_gemini(noi_dung_prompt, format_json=True):
+def goi_gemini(noi_dung_prompt, api_key, format_json=True):
     """
     Sử dụng Google GenAI SDK mới nhất (google-genai) cho Gemini 2.5 Flash.
+    Khởi tạo client với api_key được truyền vào.
     """
     try:
+        if not api_key:
+            print("!!! Thiếu API Key trong cấu hình.")
+            return None
+            
+        client = genai.Client(api_key=api_key)
         model_name = "gemini-2.5-flash"
         
         # Cấu hình phản hồi dạng JSON với Schema Pydantic
@@ -47,7 +49,7 @@ def goi_gemini(noi_dung_prompt, format_json=True):
         print(f"!!! Lỗi hệ thống khi gọi Gemini (GenAI Client): {e}")
         return None
 
-def loc_tin_voi_gemini(danh_sach_tin, ngu_canh, sentiment="negative"):
+def loc_tin_voi_gemini(danh_sach_tin, ngu_canh, sentiment="negative", api_key=None):
     """
     Truyền danh sách tin để Gemini lọc dựa trên bối cảnh cá mập.
     """
@@ -63,4 +65,4 @@ Danh sách bài viết:
     for i, tin in enumerate(danh_sach_tin):
         prompt += f"--- Bài {i} ---\nTiêu đề: {tin['tieu_de']}\nMô tả: {tin['mo_ta']}\n"
 
-    return goi_gemini(prompt, format_json=True)
+    return goi_gemini(prompt, api_key, format_json=True)

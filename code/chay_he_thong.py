@@ -4,6 +4,7 @@ import os
 import ssl
 import asyncio
 import time
+import yaml
 from datetime import datetime, timedelta
 from playwright.async_api import async_playwright
 from utils_gemini import loc_tin_voi_gemini
@@ -14,7 +15,7 @@ if (not os.environ.get('PYTHONHTTPSVERIFY', '') and
     ssl._create_default_https_context = ssl._create_unverified_context
 
 # Đường dẫn các file (Quay lại thư mục gốc)
-FILE_CAU_HINH = '../config.json'
+FILE_CAU_HINH = '../config.yaml'
 FILE_NGUON_RSS = '../rss_links.json'
 THU_MUC_KET_QUA = '../ket_qua'
 FILE_KET_QUA_CUOI = os.path.join(THU_MUC_KET_QUA, 'ket_qua_cuoi_cung.json')
@@ -55,11 +56,11 @@ async def thuc_thi_he_thong():
 
     # 1. Đọc cấu hình và nguồn RSS
     if not os.path.exists(FILE_CAU_HINH) or not os.path.exists(FILE_NGUON_RSS):
-        print("!!! Thiếu file config.json hoặc rss_links.json")
+        print(f"!!! Thiếu file {FILE_CAU_HINH} hoặc {FILE_NGUON_RSS}")
         return
 
     with open(FILE_CAU_HINH, 'r', encoding='utf-8') as f:
-        cau_hinh = json.load(f)
+        cau_hinh = yaml.safe_load(f)
     
     with open(FILE_NGUON_RSS, 'r', encoding='utf-8') as f:
         danh_sach_url_rss = json.load(f)
@@ -95,10 +96,11 @@ async def thuc_thi_he_thong():
     print(f"\n>>> Bước 2: AI (Gemini) đang phân tích FUD & Cá mập Crypto...")
     ngu_canh_ai = cau_hinh.get('shark_context', '')
     muc_tieu = cau_hinh.get('target_sentiment', 'negative')
+    api_key = cau_hinh.get('google_api_key')
     
     # Chia nhỏ danh sách tin để gửi (Gemini 2.5 Flash cân được 100+ tin mỗi lần)
     danh_sach_loc = kho_du_lieu_tam[:100] 
-    ket_qua_ai = loc_tin_voi_gemini(danh_sach_loc, ngu_canh_ai, muc_tieu)
+    ket_qua_ai = loc_tin_voi_gemini(danh_sach_loc, ngu_canh_ai, muc_tieu, api_key)
     
     tin_da_loc = []
     if ket_qua_ai and isinstance(ket_qua_ai, list):
