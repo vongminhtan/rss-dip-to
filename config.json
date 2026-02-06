@@ -1,0 +1,15 @@
+{
+  "__HD_CHUNG__": "FILE CẤU HÌNH HỆ THỐNG LỌC TIN (Dành cho người dùng)",
+
+  "target_sentiment_HD": "Chọn 'negative' để lọc tin TIÊU CỰC hoặc 'positive' để lọc tin TÍCH CỰC",
+  "target_sentiment": "negative",
+
+  "ai_model_HD": "Model AI sử dụng (Ví dụ: gemini-2.0-flash)",
+  "ai_model": "gemini-2.5-flash",
+
+  "shark_context_HD": "Bối cảnh để AI phân tích. Bạn có thể thay đổi bối cảnh thao túng tại đây.",
+  "shark_context": "Bạn là một chuyên gia phân tích tâm lý thị trường Crypto. Hãy tìm các tin tức liên quan đến Blockchain, Crypto, Bitcoin hoặc các tin tức kinh tế vĩ mô có ảnh hưởng đến thị trường tiền số. Đặc biệt chú ý đến FUD (Sợ hãi, Không chắc chắn, Nghi ngờ), các tin đồn tiêu cực hoặc dấu hiệu thao túng giá của 'Cá Mập' thông qua truyền thông để điều hướng dư luận.",
+
+  "limit_days_HD": "Số ngày gần nhất muốn lấy tin (Ví dụ: 1 nghĩa là lấy tin trong vòng 24h qua)",
+  "limit_days": 1
+}
