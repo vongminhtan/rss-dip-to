@@ -33,11 +33,16 @@ THU_MUC_KET_QUA = os.path.join(BASE_DIR, 'ket_qua')
 async def quet_rss_async(url, session):
     """Tải và parse RSS bất đồng bộ."""
     try:
-        async with session.get(url, timeout=15) as response:
+        async with session.get(url, timeout=15, ssl=False) as response:
             html = await response.text()
             return feedparser.parse(html)
     except Exception as e:
-        print(f"{RED}!!! Lỗi khi quét {url}: {e}{RESET}")
+        # Nếu gặp lỗi tiêu đề quá dài (Yahoo Finance) hoặc các lỗi khác, thông báo nhẹ nhàng
+        error_msg = str(e)
+        if "Header value is too long" in error_msg:
+            print(f"{YELLOW}--- Nguồn {url} phản hồi header quá dài (Bỏ qua RSS này/Yahoo)...{RESET}")
+        else:
+            print(f"{RED}!!! Lỗi khi quét {url}: {error_msg[:100]}{RESET}")
         return None
 
 async def lay_noi_dung_chi_tiet(duong_dan_url, ngu_canh_trinh_duyet):
@@ -72,9 +77,10 @@ async def thuc_thi_he_thong():
     
     with open(FILE_NGUON_RSS, 'r', encoding='utf-8') as f:
         danh_sach_url_rss = json.load(f)
-        # CHẾ ĐỘ TEST: Chỉ lấy 3 link đầu tiên
-        danh_sach_url_rss = danh_sach_url_rss[:3]
-        print(f"--- [TEST MODE] Chỉ sử dụng 3 nguồn RSS đầu tiên.")
+        # CHẾ ĐỘ TEST: Lấy từ cấu hình config.yaml
+        if cau_hinh.get('test_mode', False):
+            danh_sach_url_rss = danh_sach_url_rss[:3]
+            print(f"{YELLOW}--- [TEST MODE] Chỉ sử dụng 3 nguồn RSS đầu tiên.{RESET}")
 
     kho_tin_tho = []
     tieu_de_da_lay = set()
@@ -85,7 +91,15 @@ async def thuc_thi_he_thong():
     # 2. Tải và Lọc trùng (NÂNG CẤP ĐA LUỒNG)
     print(f"\n{CYAN}{BOLD}>>> Bước 1: Đang quét RSS từ {len(danh_sach_url_rss)} nguồn (Đồng thời)...{RESET}")
     
-    async with aiohttp.ClientSession(headers={"User-Agent": "Mozilla/5.0"}) as session:
+    # Cấu hình Connector để bỏ qua SSL và tăng giới hạn Header (Tránh lỗi Yahoo)
+    connector = aiohttp.TCPConnector(ssl=False)
+    # Lưu ý: aiohttp mặc định giới hạn header 8KB, một số trang như Yahoo gửi lớn hơn. 
+    # Ta sẽ giả lập trình duyệt để tránh bị chặn.
+    async with aiohttp.ClientSession(
+        connector=connector, 
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"},
+        trust_env=True
+    ) as session:
         tasks = [quet_rss_async(url, session) for url in danh_sach_url_rss]
         results = await asyncio.gather(*tasks)
         
@@ -110,6 +124,14 @@ async def thuc_thi_he_thong():
     tong_so_tin = len(kho_tin_tho)
     print(f"{GREEN}--- Đã lấy và lọc trùng: {tong_so_tin} tin Crypto mới.{RESET}")
 
+    # LƯU FILE TẤT CẢ TIN ĐÃ TẢI (SAU BƯỚC 1)
+    if kho_tin_tho:
+        if not os.path.exists(THU_MUC_KET_QUA): os.makedirs(THU_MUC_KET_QUA)
+        file_tat_ca = os.path.join(THU_MUC_KET_QUA, f"tat_ca_tin_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.json")
+        with open(file_tat_ca, 'w', encoding='utf-8') as f:
+            json.dump(kho_tin_tho, f, ensure_ascii=False, indent=2)
+        print(f"{GREEN}--- Đã lưu danh sách tất cả tin đã tải: {RESET}{YELLOW}{file_tat_ca}{RESET}")
+
     if not kho_tin_tho: return
 
     # 3. Lọc đợt (Batching) bằng AI
@@ -133,12 +155,10 @@ async def thuc_thi_he_thong():
                     if idx is not None and idx < len(batch):
                         tin_phu_hop.append(batch[idx])
         
-        is_paid = cau_hinh.get('is_paid_api', False)
         if end_idx < tong_so_tin:
-            # Nếu là Paid API thì chờ ít hơn (0.5s), nếu Free thì chờ 2s để tránh 429
-            wait_time = 0.5 if is_paid else 2
-            print(f"  {YELLOW}...Đang nghỉ {wait_time}s giữa các đợt AI...{RESET}")
-            time.sleep(wait_time)
+            # Nghỉ cố định 2s để tránh 429 cho Key Free
+            print(f"  {YELLOW}...Đang nghỉ 2s giữa các đợt AI...{RESET}")
+            time.sleep(2)
 
     # LƯU FILE TIN ĐÃ LỌC SAU KHI AI XỬ LÝ
     if tin_phu_hop:
@@ -148,25 +168,18 @@ async def thuc_thi_he_thong():
             json.dump(tin_phu_hop, f, ensure_ascii=False, indent=2)
         print(f"\n{GREEN}--- Đã lưu danh sách tin đã lọc (chưa bóc nội dung): {RESET}{YELLOW}{file_loc}{RESET}")
 
-    # 4. Cào chi tiết và Xuất kết quả
+    # 4. Cào chi tiết và Xuất kết quả (ĐƠN LUỒNG TUẦN TỰ)
     if tin_phu_hop:
-        so_luong_luong = cau_hinh.get('crawl_concurrency', 10)
-        print(f"\n{CYAN}{BOLD}>>> Bước 3: Đang bóc tách chi tiết {len(tin_phu_hop)} tin (Sử dụng {so_luong_luong} luồng tối ưu)...{RESET}")
+        print(f"\n{CYAN}{BOLD}>>> Bước 3: Đang bóc tách chi tiết {len(tin_phu_hop)} tin (Đơn luồng)...{RESET}")
         
-        # Giới hạn số lượng luồng cào cùng lúc
-        limit = asyncio.Semaphore(so_luong_luong)
-
-        async def cào_tin_với_limit(tin_obj, context):
-            async with limit:
-                print(f"  {YELLOW}--- Đang bóc:{RESET} {tin_obj['tieu_de'][:60]}...")
-                tin_obj['noi_dung'] = await lay_noi_dung_chi_tiet(tin_obj['duong_dan'], context)
-
         async with async_playwright() as p:
             trinh_duyet = await p.chromium.launch(headless=True)
             ngu_canh = await trinh_duyet.new_context()
             
-            tasks = [cào_tin_với_limit(tin, ngu_canh) for tin in tin_phu_hop]
-            await asyncio.gather(*tasks)
+            # Chạy tuần tự từng tin một
+            for i, tin in enumerate(tin_phu_hop):
+                print(f"  {YELLOW}[{i+1}/{len(tin_phu_hop)}] --- Đang bóc:{RESET} {tin['tieu_de'][:60]}...")
+                tin['noi_dung'] = await lay_noi_dung_chi_tiet(tin['duong_dan'], ngu_canh)
             
             await trinh_duyet.close()
 

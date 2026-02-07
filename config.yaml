@@ -19,11 +19,11 @@ shark_context: >
 limit_days: 1
 
 # Nhập Google API Key của bạn (Lấy tại aistudio.google.com)
-google_api_key: "key_here"
+google_api_key: "[GCP_API_KEY]"
 
-# Bạn đang dùng Key trả phí (Paid)? Nếu có hãy để true để chạy nhanh hơn (không phải chờ lâu giữa các đợt lọc AI)
-is_paid_api: false
+# Số lượng luồng (số tab trình duyệt) chạy song song khi cào nội dung (Mặc định: 1)
+# Để là 1 cho an toàn và đơn luồng.
+crawl_concurrency: 1
 
-# Số lượng luồng (số tab trình duyệt) chạy song song khi cào nội dung (Mặc định: 10)
-# Lưu ý: Càng cao càng nhanh nhưng có thể bị chặn IP hoặc tốn RAM.
-crawl_concurrency: 10
+# Chế độ TEST: Chỉ lấy 3 nguồn RSS đầu tiên để chạy thử nhanh (true/false)
+test_mode: false
