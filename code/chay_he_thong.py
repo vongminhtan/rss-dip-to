@@ -269,7 +269,7 @@ async def thuc_thi_he_thong():
                 # Mỗi luồng khởi cách nhau 0.3-0.6s dựa trên index
                 await asyncio.sleep(index * random.uniform(0.3, 0.6))
                 
-                print(f"  {YELLOW}--- Đang bóc:{RESET} {tin_obj['tieu_de'][:60]}...")
+                print(f"  {YELLOW}[{index+1}/{len(tin_phu_hop)}] --- Đang bóc:{RESET} {tin_obj['tieu_de'][:60]}...")
                 tin_obj['noi_dung'] = await lay_noi_dung_chi_tiet(tin_obj['duong_dan'], context)
 
         async with async_playwright() as p:
