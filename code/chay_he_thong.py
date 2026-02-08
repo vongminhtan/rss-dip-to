@@ -5,11 +5,14 @@ import ssl
 import asyncio
 import time
 import random
-import yaml
 import aiohttp
 from datetime import datetime
+from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 from utils_gemini import loc_tin_voi_gemini
+
+# Load environment variables từ file .env
+load_dotenv()
 
 # Mã màu ANSI cho Console
 BLUE = "\033[34m"
@@ -36,8 +39,8 @@ if (not os.environ.get('PYTHONHTTPSVERIFY', '') and
 
 # Đường dẫn các file (Xác định dựa trên vị trí của script)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FILE_CAU_HINH = os.path.join(BASE_DIR, 'config.yaml')
 FILE_NGUON_RSS = os.path.join(BASE_DIR, 'rss_links.json')
+FILE_NGUON_RSS_TEST = os.path.join(BASE_DIR, 'rss_links_test.json')
 THU_MUC_KET_QUA = os.path.join(BASE_DIR, 'ket_qua')
 
 async def quet_rss_async(url, session, sem):
@@ -65,19 +68,21 @@ async def quet_rss_async(url, session, sem):
                     print(f"{RED}!!! Lỗi khi quét {url}: {error_msg[:100]}{RESET}")
                 return None
 
-async def lay_noi_dung_chi_tiet(url, ngu_canh_trinh_duyet):
+async def lay_noi_dung_chi_tiet(url, trinh_duyet):
     """Bóc tách nội dung với logic Human-like và xử lý Redirect Google News"""
+    ngu_canh = None
     trang = None
     try:
         # Chọn ngẫu nhiên thiết bị
         thiet_bi = random.choice(THIET_BI_GIA_LAP)
         
-        # Khởi tạo trang với viewport và mobile flag
-        trang = await ngu_canh_trinh_duyet.new_page(
+        # Tạo context mới cho mỗi trang để có User-Agent riêng
+        ngu_canh = await trinh_duyet.new_context(
             user_agent=thiet_bi['ua'],
             viewport=thiet_bi['vp'],
             is_mobile=thiet_bi['is_mobile']
         )
+        trang = await ngu_canh.new_page()
         
         # --- Human Behavior Simulator ---
         # 1. Random delay trước khi truy cập
@@ -85,7 +90,8 @@ async def lay_noi_dung_chi_tiet(url, ngu_canh_trinh_duyet):
         
         # 2. Truy cập (Google News cần timeout lâu hơn một chút)
         timeout_val = 60000 if "news.google.com" in url else 45000
-        response = await trang.goto(url, wait_until="networkidle", timeout=timeout_val)
+        # Sử dụng domcontentloaded thay vì networkidle để tránh bị treo bởi trackers
+        response = await trang.goto(url, wait_until="domcontentloaded", timeout=timeout_val)
         
         # 3. Xử lý đặc biệt cho Google News redirect
         if "news.google.com" in url:
@@ -110,10 +116,12 @@ async def lay_noi_dung_chi_tiet(url, ngu_canh_trinh_duyet):
                 return noi_dung_tho.strip()
         
         return "Không thể bóc tách nội dung."
-    except Exception:
+    except Exception as e:
+        # print(f"Lỗi khi bóc {url}: {str(e)}") # Có thể bật khi cần debug sâu
         return "Không thể bóc tách nội dung."
     finally:
         if trang: await trang.close()
+        if ngu_canh: await ngu_canh.close()
 
 def thong_ke_loi(tin_phu_hop):
     error_links = []
@@ -153,45 +161,68 @@ async def thuc_thi_he_thong():
     print("   BẮT ĐẦU CHẠY HỆ THỐNG PHÂN TÍCH TIN TỨC (LOCAL)")
     print(f"===================================================={RESET}")
 
-    # 1. Đọc cấu hình
-    if not os.path.exists(FILE_CAU_HINH) or not os.path.exists(FILE_NGUON_RSS):
-        print(f"!!! Thiếu file cấu hình")
+    # 1. Đọc cấu hình từ .env
+    if not os.path.exists(FILE_NGUON_RSS):
+        print(f"!!! Thiếu file nguồn RSS ({FILE_NGUON_RSS})")
         return
 
-    with open(FILE_CAU_HINH, 'r', encoding='utf-8') as f:
-        cau_hinh = yaml.safe_load(f)
+    # Hàm hỗ trợ lấy config: Ưu tiên ENV > Default
+    def get_conf(key, default=None):
+        env_key = key.upper()
+        val = os.getenv(env_key)
+        if val is not None:
+            # Chuyển đổi kiểu dữ liệu cho phù hợp
+            if isinstance(default, bool):
+                return val.lower() in ('true', '1', 'yes')
+            if isinstance(default, int):
+                try: return int(val)
+                except: return default
+            return val
+        return default
+
+    test_mode = get_conf('test_mode', False)
     
-    with open(FILE_NGUON_RSS, 'r', encoding='utf-8') as f:
-        danh_sach_url_rss = json.load(f)
-        # CHẾ ĐỘ TEST: Lấy từ cấu hình config.yaml
-        if cau_hinh.get('test_mode', False):
-            danh_sach_url_rss = danh_sach_url_rss[:3]
-            print(f"{YELLOW}--- [TEST MODE] Chỉ sử dụng 3 nguồn RSS đầu tiên.{RESET}")
+    # CHẾ ĐỘ TEST: Ưu tiên đọc từ file rss_links_test.json
+    if test_mode:
+        if os.path.exists(FILE_NGUON_RSS_TEST):
+            with open(FILE_NGUON_RSS_TEST, 'r', encoding='utf-8') as f:
+                danh_sach_url_rss = json.load(f)
+            print(f"{YELLOW}--- [TEST MODE] Đã tải {len(danh_sach_url_rss)} nguồn từ {FILE_NGUON_RSS_TEST}{RESET}")
+        else:
+            with open(FILE_NGUON_RSS, 'r', encoding='utf-8') as f:
+                danh_sach_url_rss = json.load(f)[:3]
+            print(f"{YELLOW}--- [TEST MODE] Không tìm thấy file test, lấy 3 nguồn đầu tiên.{RESET}")
+    else:
+        with open(FILE_NGUON_RSS, 'r', encoding='utf-8') as f:
+            danh_sach_url_rss = json.load(f)
 
     kho_tin_tho = []
     tieu_de_da_lay = set()
-    so_ngay_gioi_han = cau_hinh.get('limit_days', 2)
+    so_ngay_gioi_han = get_conf('limit_days', 2)
     thoi_diem_hien_tai = time.time()
     giay_gioi_han = so_ngay_gioi_han * 24 * 60 * 60
 
-    # 2. Tải và Lọc trùng (NÂNG CẤP ĐA LUỒNG)
-    print(f"\n{CYAN}{BOLD}>>> Bước 1: Đang quét RSS từ {len(danh_sach_url_rss)} nguồn (Đồng thời)...{RESET}")
+    # 2. Tải và Lọc trùng (Lấy tuần tự để tránh lỗi mạng/DNS)
+    print(f"\n{CYAN}{BOLD}>>> Bước 1: Đang quét RSS từ {len(danh_sach_url_rss)} nguồn (Tuần tự)...{RESET}")
     
     # Cấu hình Connector tối ưu cho Mac: Bật DNS Cache và bỏ SSL
     connector = aiohttp.TCPConnector(ssl=False, use_dns_cache=True, ttl_dns_cache=300)
-    # Giảm xuống 5 nguồn RSS tải cùng lúc để tránh DNS Throttling trên Mac
-    sem_rss = asyncio.Semaphore(5)
+    sem_rss = asyncio.Semaphore(1) # Chế độ tuần tự (Semaphore=1)
     
     async with aiohttp.ClientSession(
         connector=connector, 
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"},
         trust_env=True
     ) as session:
-        tasks = [quet_rss_async(url, session, sem_rss) for url in danh_sach_url_rss]
-        results = await asyncio.gather(*tasks)
-        
-        for feed in results:
-            if not feed: continue
+        for i, url in enumerate(danh_sach_url_rss):
+            print(f"  [{i+1}/{len(danh_sach_url_rss)}] Quét nguồn: {url[:60]}...", end=" ", flush=True)
+            feed = await quet_rss_async(url, session, sem_rss)
+            
+            if not feed:
+                print(f"{RED}Thất bại{RESET}")
+                continue
+            
+            so_tin_moi_nguon = 0
             for tin in feed.entries:
                 tieu_de = tin.get('title', '').strip()
                 if not tieu_de or tieu_de in tieu_de_da_lay: continue
@@ -207,6 +238,12 @@ async def thuc_thi_he_thong():
                     'duong_dan': tin.get('link', '')
                 })
                 tieu_de_da_lay.add(tieu_de)
+                so_tin_moi_nguon += 1
+            
+            if so_tin_moi_nguon > 0:
+                print(f"{GREEN}Thành công ({so_tin_moi_nguon} tin mới){RESET}")
+            else:
+                print(f"{YELLOW}Thành công (0 tin mới){RESET}")
     
     tong_so_tin = len(kho_tin_tho)
     print(f"{GREEN}--- Đã lấy và lọc trùng: {tong_so_tin} tin Crypto mới.{RESET}")
@@ -223,8 +260,12 @@ async def thuc_thi_he_thong():
 
     # 3. Lọc đợt (Batching) bằng AI
     print(f"\n{CYAN}{BOLD}>>> Bước 2: AI (Gemini) đang lọc tin...{RESET}")
-    ngu_canh_ai = cau_hinh.get('shark_context', '')
-    api_key = cau_hinh.get('google_api_key')
+    ngu_canh_ai = get_conf('shark_context', '')
+    
+    api_key = get_conf('google_api_key', 'NHAP_KEY_O_DAY')
+    if not api_key or api_key == "NHAP_KEY_O_DAY":
+        print(f"{RED}!!! Lỗi: Chưa cấu hình GOOGLE_API_KEY trong file .env hoặc config.yaml{RESET}")
+        return
     
     BATCH_SIZE = 150
     tin_phu_hop = []
@@ -257,26 +298,25 @@ async def thuc_thi_he_thong():
 
     # 4. Cào chi tiết và Xuất kết quả (ĐA LUỒNG TỐI ƯU)
     if tin_phu_hop:
-        so_luong_luong = cau_hinh.get('crawl_concurrency', 10)
+        so_luong_luong = get_conf('crawl_concurrency', 5)
         print(f"\n{CYAN}{BOLD}>>> Bước 3: Đang bóc tách chi tiết {len(tin_phu_hop)} tin (Sử dụng {so_luong_luong} luồng)...{RESET}")
         
         # Giới hạn số lượng luồng cào cùng lúc (Semaphore)
         limit = asyncio.Semaphore(so_luong_luong)
 
-        async def cào_tin_với_limit(index, tin_obj, context):
+        async def cào_tin_với_limit(index, tin_obj, browser_instance):
             async with limit:
-                # Thêm staggered delay để không khởi tạo tất cả cùng 1 lúc (Tránh bị soi)
-                # Mỗi luồng khởi cách nhau 0.3-0.6s dựa trên index
-                await asyncio.sleep(index * random.uniform(0.3, 0.6))
+                # Thêm staggered delay để không khởi tạo tất cả cùng 1 lúc
+                await asyncio.sleep(random.uniform(1, 3))
                 
                 print(f"  {YELLOW}[{index+1}/{len(tin_phu_hop)}] --- Đang bóc:{RESET} {tin_obj['tieu_de'][:60]}...")
-                tin_obj['noi_dung'] = await lay_noi_dung_chi_tiet(tin_obj['duong_dan'], context)
+                tin_obj['noi_dung'] = await lay_noi_dung_chi_tiet(tin_obj['duong_dan'], browser_instance)
 
         async with async_playwright() as p:
+            # Chạy có giao diện hoặc không tùy headless
             trinh_duyet = await p.chromium.launch(headless=True)
-            ngu_canh = await trinh_duyet.new_context()
             
-            tasks = [cào_tin_với_limit(i, tin, ngu_canh) for i, tin in enumerate(tin_phu_hop)]
+            tasks = [cào_tin_với_limit(i, tin, trinh_duyet) for i, tin in enumerate(tin_phu_hop)]
             await asyncio.gather(*tasks)
             
             await trinh_duyet.close()

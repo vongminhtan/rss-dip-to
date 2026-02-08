@@ -24,7 +24,7 @@ def goi_gemini(noi_dung_prompt, api_key, format_json=True):
                 return None
                 
             client = genai.Client(api_key=api_key)
-            model_name = "gemini-2.5-flash"
+            model_name = os.getenv('AI_MODEL', 'gemini-2.5-flash')
             
             # Cấu hình phản hồi dạng JSON với Schema Pydantic
             config = types.GenerateContentConfig(
