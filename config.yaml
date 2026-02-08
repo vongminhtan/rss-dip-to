@@ -19,11 +19,11 @@ shark_context: >
 limit_days: 1
 
 # Nhập Google API Key của bạn (Lấy tại aistudio.google.com)
-google_api_key: "[GCP_API_KEY]"
+google_api_key: "NHAP_KEY_O_DAY"
 
-# Số lượng luồng (số tab trình duyệt) chạy song song khi cào nội dung (Mặc định: 1)
-# Để là 1 cho an toàn và đơn luồng.
-crawl_concurrency: 1
+# Số lượng luồng (số tab trình duyệt) chạy song song khi cào nội dung (Mặc định: 5)
+# Đây là con số tối ưu để tránh bị chặn IP và quá tải RAM.
+crawl_concurrency: 3
 
 # Chế độ TEST: Chỉ lấy 3 nguồn RSS đầu tiên để chạy thử nhanh (true/false)
 test_mode: false
